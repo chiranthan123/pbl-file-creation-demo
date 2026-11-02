@@ -6,6 +6,8 @@
   <title>PWA File System Access Demo</title>
   <meta name="theme-color" content="#2563eb">
   <meta name="description" content="Demonstration of the File System Access API in a Progressive Web App">
+  <link rel="manifest" href="./manifest.json">
+  <script id="build-meta">window.__BUILD_INFO__ = { commit: "5dad252", timestamp: "Nov 2, 2026, 20:38", full: "Build: 5dad252 | Nov 2, 2026, 20:38" };</script>
   
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -218,7 +220,27 @@
   </main>
 
   <!-- Notification Toast Container -->
-  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+  <div id="toastContainer" class="fixed bottom-14 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Build & Offline Status Bar -->
+  <footer id="appStatusBar" class="mt-auto border-t border-slate-200 bg-white/95 backdrop-blur-sm px-4 py-2.5 text-xs text-slate-500 shadow-sm z-20">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2">
+        <span id="swStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 border border-slate-200">
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
+          <span>SW: Initializing...</span>
+        </span>
+        <span id="networkStatusBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <i class="ph ph-wifi-high text-xs"></i>
+          <span>Online</span>
+        </span>
+      </div>
+      <div id="buildInfo" class="font-mono text-[11px] text-slate-600 flex items-center gap-1.5">
+        <i class="ph ph-git-commit text-slate-400 text-xs"></i>
+        <span id="buildVersionText">Build: 5dad252 | Nov 2, 2026, 20:38</span>
+      </div>
+    </div>
+  </footer>
 
   <!-- Client JavaScript Logic -->
   <script>
@@ -447,55 +469,6 @@
       appendLog('Log cleared by user.', 'info');
     });
 
-    // PWA Manifest setup via dynamic blob
-    const manifestData = {
-      name: "PWA File System Demo",
-      short_name: "FS Access PWA",
-      description: "Demonstration of Native File System Access in a Progressive Web App",
-      start_url: "./",
-      display: "standalone",
-      background_color: "#f8fafc",
-      theme_color: "#2563eb",
-      icons: [
-        {
-          src: "https://placehold.co/192x192/2563eb/ffffff.png?text=FS+PWA",
-          sizes: "192x192",
-          type: "image/png"
-        },
-        {
-          src: "https://placehold.co/512x512/2563eb/ffffff.png?text=FS+PWA",
-          sizes: "512x512",
-          type: "image/png"
-        }
-      ]
-    };
-    const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
-    const manifestURL = URL.createObjectURL(manifestBlob);
-    const linkEl = document.createElement('link');
-    linkEl.rel = 'manifest';
-    linkEl.href = manifestURL;
-    document.head.appendChild(linkEl);
-
-    // Register Minimal Service Worker via Blob for PWA eligibility
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        const swScript = `
-          const CACHE_NAME = 'pwa-fs-demo-v1';
-          self.addEventListener('install', (e) => self.skipWaiting());
-          self.addEventListener('activate', (e) => e.waitUntil(clients.claim()));
-          self.addEventListener('fetch', (e) => {
-            e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
-          });
-        `;
-        const swBlob = new Blob([swScript], { type: 'application/javascript' });
-        const swURL = URL.createObjectURL(swBlob);
-
-        navigator.serviceWorker.register(swURL)
-          .then(() => appendLog('PWA Service Worker registered successfully.', 'info'))
-          .catch((err) => appendLog(`Service Worker registration notice: ${err.message}`, 'warn'));
-      });
-    }
-
     // PWA Install prompt handling
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -513,19 +486,95 @@
       deferredInstallPrompt = null;
       installBtn.classList.add('hidden');
     });
-  </script>
-<script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js')
-        .then((reg) => {
-          console.log('Service Worker registered successfully:', reg.scope);
-        })
-        .catch((err) => {
-          console.error('Service Worker registration failed:', err);
+
+    // PWA Service Worker Registration & Status Indicators
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js')
+          .then((reg) => {
+            console.log('[SW] Service Worker registered successfully with scope:', reg.scope);
+            appendLog(`Service Worker registered: ${reg.scope}`, 'info');
+
+            function updateSWStatus() {
+              const swBadge = document.getElementById('swStatusBadge');
+              if (!swBadge) return;
+
+              if (reg.active) {
+                console.log('[SW] Active Service Worker verified (reg.active):', reg.active.state);
+                swBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span>SW: Active (Offline Ready)</span>';
+                swBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
+              } else if (reg.installing) {
+                console.log('[SW] Service Worker is installing...');
+                swBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span><span>SW: Installing...</span>';
+                swBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200';
+              } else if (reg.waiting) {
+                console.log('[SW] Service Worker is waiting...');
+                swBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-500"></span><span>SW: Waiting</span>';
+                swBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200';
+              }
+            }
+
+            updateSWStatus();
+
+            if (reg.installing) {
+              reg.installing.addEventListener('statechange', (e) => {
+                if (e.target.state === 'activated') {
+                  updateSWStatus();
+                }
+              });
+            }
+
+            reg.addEventListener('updatefound', () => {
+              const newWorker = reg.installing;
+              if (newWorker) {
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'activated') {
+                    updateSWStatus();
+                  }
+                });
+              }
+            });
+          })
+          .catch((err) => {
+            console.error('[SW] Service Worker registration failed:', err);
+            appendLog(`Service Worker registration error: ${err.message}`, 'error');
+            const swBadge = document.getElementById('swStatusBadge');
+            if (swBadge) {
+              swBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500"></span><span>SW: Failed</span>';
+              swBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-50 text-rose-700 border border-rose-200';
+            }
+          });
+
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          console.log('[SW] Controller changed: new Service Worker claimed client');
+          appendLog('Service Worker claimed page controller.', 'success');
+          const swBadge = document.getElementById('swStatusBadge');
+          if (swBadge) {
+            swBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span><span>SW: Active (Offline Ready)</span>';
+            swBadge.className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
+          }
         });
+      });
+    }
+
+    // Network Connectivity Monitoring
+    window.addEventListener('online', () => {
+      const netBadge = document.getElementById('networkStatusBadge');
+      if (netBadge) {
+        netBadge.innerHTML = '<i class="ph ph-wifi-high text-xs"></i><span>Online</span>';
+        netBadge.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200';
+      }
+      appendLog('Network restored: online mode.', 'info');
     });
-  }
-</script>
+
+    window.addEventListener('offline', () => {
+      const netBadge = document.getElementById('networkStatusBadge');
+      if (netBadge) {
+        netBadge.innerHTML = '<i class="ph ph-wifi-slash text-xs"></i><span>Offline (Cached)</span>';
+        netBadge.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200';
+      }
+      appendLog('Network disconnected: running offline from Service Worker cache.', 'warn');
+    });
+  </script>
 </body>
 </html>

@@ -1,0 +1,18 @@
+{
+  "name": "pwa-file-creation-demo",
+  "version": "1.0.0",
+  "description": "Progressive Web App with File System Access, offline Service Worker, and dynamic commit version tracker",
+  "main": "index.html",
+  "scripts": {
+    "build": "node update-build-info.js",
+    "version:inject": "node update-build-info.js"
+  },
+  "keywords": [
+    "pwa",
+    "service-worker",
+    "offline",
+    "file-system-access-api"
+  ],
+  "author": "",
+  "license": "MIT"
+}
