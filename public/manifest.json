@@ -1,0 +1,23 @@
+{
+  "name": "PWA File System Demo",
+  "short_name": "FS Access PWA",
+  "description": "Demonstration of Native File System Access in a Progressive Web App",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#2563eb",
+  "icons": [
+    {
+      "src": "https://placehold.co/192x192/2563eb/ffffff.png?text=FS+PWA",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://placehold.co/512x512/2563eb/ffffff.png?text=FS+PWA",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+

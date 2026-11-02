@@ -31,6 +31,22 @@ function getFormattedTimestamp() {
   return `${month} ${day}, ${year}, ${hours}:${minutes}`;
 }
 
+function copyRecursiveSync(src, dest) {
+  const exists = fs.existsSync(src);
+  const stats = exists && fs.statSync(src);
+  const isDirectory = exists && stats.isDirectory();
+  if (isDirectory) {
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+    fs.readdirSync(src).forEach((childItemName) => {
+      copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
+    });
+  } else if (exists) {
+    fs.copyFileSync(src, dest);
+  }
+}
+
 function injectBuildInfo() {
   const commit = getGitCommit();
   const timestamp = getFormattedTimestamp();
@@ -59,7 +75,28 @@ function injectBuildInfo() {
 
   fs.writeFileSync(indexPath, html, 'utf8');
   console.log(`[build] Successfully injected build info into index.html: "${buildString}"`);
+
+  // Synchronize build assets into "public" output directory for Vercel
+  const publicDir = path.join(__dirname, 'public');
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true });
+  }
+
+  // Copy files
+  ['index.html', 'sw.js', 'manifest.json'].forEach((file) => {
+    const src = path.join(__dirname, file);
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, path.join(publicDir, file));
+    }
+  });
+
+  // Copy demo folder if exists
+  const demoFolder = path.join(__dirname, 'PWA_Demo_Folder');
+  if (fs.existsSync(demoFolder)) {
+    copyRecursiveSync(demoFolder, path.join(publicDir, 'PWA_Demo_Folder'));
+  }
+
+  console.log('[build] Successfully synced static assets into "public/" directory for deployment');
 }
 
 injectBuildInfo();
-
